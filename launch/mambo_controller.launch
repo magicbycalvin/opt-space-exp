@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+    <param name="ble_address" type="str" value="D0:3A:E4:E6:E6:22" />
+    <node name="mambo_controller" pkg="opt_space_exp"
+          type="parrot_mambo.py" output="screen"
+          ns="mambo" />
+</launch>
+
+
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env /home/ckjensen/anaconda3/envs/parrot_mambo/bin/python
 # -*- coding: utf-8 -*-
 """
 Created on Sun Apr 18 00:02:11 2021
@@ -10,21 +10,23 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Twist, TwistStamped
 import numpy as np
 from pyparrot.Minidrone import Mambo
 import rospy
+from std_msgs.msg import Empty
 import tf
 
 
 class MamboCommander:
     def __init__(self, ble_addr):
-        self._cmd_sub = rospy.Subscriber('cmd_vel', TwistStamped)
+        self._cmd_sub = rospy.Subscriber('cmd_vel', TwistStamped, self.send_cmd)
+        self._land_sub = rospy.Subscriber('land', Empty, lambda x: self.mambo.safe_land(5))
         self._pos_pub = rospy.Publisher('pose', PoseStamped, queue_size=10)
         self._vel_pub = rospy.Publisher('twist', TwistStamped, queue_size=10)
 
         rospy.loginfo('Initializing mambo connection...')
         self.mambo = Mambo(ble_addr, use_wifi=False)
         self.mambo.connect(3)
-        self.mambo.smart_sleep(1)
+        self.mambo.smart_sleep(2)
         self.mambo.ask_for_state_update()
-        self.mambo.smart_sleep(1)
+        self.mambo.smart_sleep(2)
         rospy.loginfo('Mambo connection initialized.')
 
         # self.mambo.set_user_sensor_callback(self.send_pos, None)
@@ -43,11 +45,12 @@ class MamboCommander:
         rospy.loginfo('Mambo connection closed.')
 
     def send_cmd(self, data):
-        xvel = data.twist.linear.x
-        yvel = data.twist.linear.y
+        print(data)
+        xvel = data.twist.linear.y # Note that parrot uses y for forward as opposed to the typical x axis
+        yvel = data.twist.linear.x
         zpos = data.twist.linear.z
 
-        self.mambo.fly_direct(roll=xvel, pitch=yvel, yaw=0.0, vertical_movement=zpos)
+        self.mambo.fly_direct(roll=xvel, pitch=yvel, yaw=0.0, vertical_movement=zpos, duration=1e-6)
 
     def send_state(self):
         pose = PoseStamped()
@@ -72,7 +75,9 @@ class MamboCommander:
 
 if __name__ == '__main__':
     rospy.init_node('mambo_ctrl', anonymous=True)
-    ble_addr = rospy.get_param('ble_address')
+    # ble_addr = rospy.get_param('ble_address')
+    # ble_addr = 'D0:3A:E4:E6:E6:22'
+    ble_addr = 'D0:3A:AE:86:E6:23'
     # ns = rospy.get_namespace()
     freq = rospy.get_param('ctrl_freq', 100)
     rate = rospy.Rate(freq)
