@@ -29,6 +29,12 @@ class MamboCommander:
         self.mambo.smart_sleep(2)
         rospy.loginfo('Mambo connection initialized.')
 
+        self.vel_cmd_x = 0.0
+        self.vel_cmd_y = 0.0
+        self.pos_cmd_z = 0.0
+
+        # self.flying = False
+
         # self.mambo.set_user_sensor_callback(self.send_pos, None)
 
     def __enter__(self):
@@ -45,12 +51,18 @@ class MamboCommander:
         rospy.loginfo('Mambo connection closed.')
 
     def send_cmd(self, data):
-        print(data)
+        # self.flying = True
         xvel = data.twist.linear.y # Note that parrot uses y for forward as opposed to the typical x axis
         yvel = data.twist.linear.x
         zpos = data.twist.linear.z
 
-        self.mambo.fly_direct(roll=xvel, pitch=yvel, yaw=0.0, vertical_movement=zpos, duration=1e-6)
+        self.vel_cmd_x = xvel
+        self.vel_cmd_y = yvel
+        self.pos_cmd_z = zpos
+
+        # if not self.flying:
+        #     self.mambo.fly_direct(roll=xvel, pitch=yvel, yaw=0.0, vertical_movement=zpos, duration=1e-3)
+        #     self.flying = False
 
     def send_state(self):
         pose = PoseStamped()
@@ -76,8 +88,8 @@ class MamboCommander:
 if __name__ == '__main__':
     rospy.init_node('mambo_ctrl', anonymous=True)
     # ble_addr = rospy.get_param('ble_address')
-    # ble_addr = 'D0:3A:E4:E6:E6:22'
-    ble_addr = 'D0:3A:AE:86:E6:23'
+    ble_addr = 'D0:3A:E4:E6:E6:22'
+    # ble_addr = 'D0:3A:AE:86:E6:23'
     # ns = rospy.get_namespace()
     freq = rospy.get_param('ctrl_freq', 100)
     rate = rospy.Rate(freq)
@@ -85,5 +97,6 @@ if __name__ == '__main__':
     with MamboCommander(ble_addr) as mambo:
         mambo.mambo.safe_takeoff(5)
         while not rospy.is_shutdown():
+            mambo.mambo.fly_direct(mambo.vel_cmd_x, mambo.vel_cmd_y, 0.0, mambo.pos_cmd_z, duration=9e-3)
             # run forever until ros is shut down
             rate.sleep()
